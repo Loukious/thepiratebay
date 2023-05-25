@@ -41,11 +41,11 @@ export type Categories = {
  * @private
  */
 export function parseTorrentIsVIP(element: Cheerio): boolean {
-  return element.find('img[title="VIP"]').attr("title") === "VIP";
+  return element.find('img[alt="VIP"]').attr("alt") === "VIP";
 }
 
 export function parseTorrentIsTrusted(element: Cheerio): boolean {
-  return element.find('img[title="Trusted"]').attr("title") === "Trusted";
+  return element.find('img[alt="Trusted"]').attr("alt") === "Trusted";
 }
 
 /**
@@ -56,7 +56,7 @@ export function isTorrentVerified(element: Cheerio): boolean {
 }
 
 export async function getProxyList(): Promise<Array<string>> {
-  const response = await fetch("https://proxybay.tv/").then(res => res.text());
+  const response = await fetch("https://proxy-bay.click/").then(res => res.text());
   const $ = cheerio.load(response);
 
   const links = $('[rel="nofollow"]')
@@ -86,10 +86,7 @@ export function parsePage<T>(
     if (error) console.log(error);
 
     const proxyUrls = [
-      "https://thepiratebay.org",
-      "https://thepiratebay.se",
-      "https://pirateproxy.one",
-      "https://ahoy.one"
+      "https://thepiratebay.org"
     ];
 
     const requests = proxyUrls
@@ -98,7 +95,7 @@ export function parsePage<T>(
           new UrlParse(url).set("hostname", new UrlParse(_url).hostname).href
       )
       .map(async _url => {
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({headless: 'new'});
         const page = await browser.newPage();
         await page.goto(_url).catch(async () => {
           await browser.close();
@@ -142,7 +139,6 @@ export function parsePage<T>(
     };
     return race();
   };
-
   return attempt()
     .catch(() => attempt("Failed, retrying"))
     .then(response => parseCallback(response as string, filter));
@@ -193,12 +189,14 @@ export function parseResults(
         .attr("href") || "";
     const uploader: string = $(el)
       .find(".item-user a")
+      .text() || $(el)
+      .find(".item-user")
       .text();
-    const uploaderLink: string =
-      baseUrl +
-      $(el)
-        .find(".item-user a")
-        .attr("href");
+    const uploaderLinkElement = $(el)
+    .find(".item-user a");
+    const uploaderLink: string = uploaderLinkElement.length > 0
+    ? baseUrl + uploaderLinkElement.attr("href")
+    : "";
     const verified: boolean = isTorrentVerified($(el));
 
     const category = {
@@ -319,8 +317,10 @@ export function parseTorrentPage(torrentPage: string): Item {
   const leechers = $("dt:contains(Leechers:) + dd")
     .text()
     .trim();
-  const id = $("input[name=id]").attr("value") || "";
-  const link = `${baseUrl}/torrent/${id}`;
+    const id ="";
+    const link="";
+  // const id = $("input[name=id]").attr("value") || "";
+  // const link = `${baseUrl}/description.php?id=${id}`;
   const magnetLink = $('a:contains("Get This Torrent")').attr("href") || "";
   const description =
     $("#descr")

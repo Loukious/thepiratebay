@@ -91,6 +91,10 @@ export function convertOrderByObject(
     ["leeches", "asc"]
   ];
 
+  if (typeof orderByOpts.orderBy === 'string' && !isNaN(Number(orderByOpts.orderBy))) {
+    return orderByOpts.orderBy;
+  }
+
   const orderByOptsWithDeafults = {
     ...defaultOrder,
     ...orderByOpts
@@ -104,6 +108,7 @@ export function convertOrderByObject(
   );
 
   // Get the index of the query option
+
   const searchNumber = option ? options.indexOf(option) + 1 : undefined;
 
   if (!searchNumber) throw Error("Can't find option");
@@ -217,7 +222,6 @@ export function topTorrents(category = "all") {
   if (parseInt(category, 10)) {
     castedCategory = castNumberToString(category);
   }
-
   return parsePage(
     `${baseUrl}/top/${castedCategory || category}`,
     parseResults

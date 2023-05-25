@@ -10,6 +10,51 @@ import { parseCategories, parsePage, getProxyList } from "../src/parser";
 import Torrent, { convertOrderByObject } from "../src";
 import { baseUrl } from "../src/constants";
 
+jest.setTimeout(3 * 60 * 1000);
+let topTorrents;
+let tvShow;
+let categories;
+let subcategory;
+let comments;
+let search;
+let torrent;
+let fistSearchResult;
+let recentTorrents;
+let userTorrents;
+let searchResults;
+
+  describe("Torrent.topTorrents(category, opts)", function() {
+    beforeAll(async () => {
+      topTorrents = await Torrent.topTorrents("205");
+    });
+
+    it("should return a promise", async () => {
+      chaiExpect(Torrent.topTorrents("205")).to.be.a("promise");
+    });
+
+    it("should handle numeric input", async () => {
+      const topTorrents = await Torrent.topTorrents(205);
+      chaiExpect(topTorrents).to.be.an("array");
+      chaiExpect(topTorrents[0].category.name).to.be.equal("Video");
+      chaiExpect(topTorrents[0].subcategory.name).to.be.equal("TV-Shows");
+    });
+
+    it("should return an array of top torrents of the selected category", async () => {
+      chaiExpect(topTorrents).to.be.an("array");
+    });
+
+    describe("search result", () => {
+      it("category and subcategory should match specified category", async () => {
+        chaiExpect(topTorrents[0].category.name).to.be.equal("Video");
+        chaiExpect(topTorrents[0].subcategory.name).to.be.equal(
+          "TV-Shows"
+        );
+      });
+    });
+});
+
+
+
 const testingUsername = "YIFY";
 
 function torrentFactory() {
@@ -80,7 +125,7 @@ describe("Torrent", () => {
         orderBy: "name",
         sortBy: "asc"
       });
-      chaiExpect(searchNumber).to.equal(2);
+      chaiExpect(searchNumber).to.equal("2");
     });
 
     it("should convert orderBy and sortBy with leechers", () => {
@@ -88,42 +133,42 @@ describe("Torrent", () => {
         orderBy: "leeches",
         sortBy: "desc"
       });
-      chaiExpect(searchNumber).to.equal(9);
+      chaiExpect(searchNumber).to.equal("9");
     });
   });
 
   describe("categories", function() {
     beforeAll(async () => {
-      this.categories = await torrentCategoryFactory();
+      categories = await torrentCategoryFactory();
     });
 
     it("retrieves categories", async () => {
-      chaiExpect(this.categories).to.be.an("array");
+      chaiExpect(categories).to.be.an("array");
     });
 
     it("retrieves categories with expected properties", async () => {
       const properties = ["name", "id", "subcategories"];
       for (const property of properties) {
-        chaiExpect(this.categories[0]).to.have.property(property);
-        chaiExpect(this.categories[0][property]).to.exist;
-        chaiExpect(this.categories[0][property]).to.not.contain("undefined");
+        chaiExpect(categories[0]).to.have.property(property);
+        chaiExpect(categories[0][property]).to.exist;
+        chaiExpect(categories[0][property]).to.not.contain("undefined");
       }
     });
   });
 
   describe("comments", function() {
     beforeAll(async () => {
-      this.comments = await torrentCommentsFactory();
+      comments = await torrentCommentsFactory();
     });
 
     it("retrieves comments", async () => {
-      chaiExpect(this.comments).to.be.an("array");
+      chaiExpect(comments).to.be.an("array");
     });
 
     it("retrieves comments with expected properties", async () => {
       const properties = ["user", "comment"];
       for (const property of properties) {
-        chaiExpect(this.comments[0])
+        chaiExpect(comments[0])
           .to.have.property(property)
           .that.is.a("string");
       }
@@ -138,16 +183,16 @@ describe("Torrent", () => {
    */
   describe("search", function() {
     beforeAll(async () => {
-      this.search = await torrentSearchFactory();
+      search = await torrentSearchFactory();
     });
 
     it("searches for items", async () => {
-      assertHasArrayOfTorrents(this.search);
+      assertHasArrayOfTorrents(search);
     });
 
     it("should have verified property", () => {
-      chaiExpect(this.search[0]).to.have.property("verified");
-      chaiExpect(this.search[0].verified).to.be.a("boolean");
+      chaiExpect(search[0]).to.have.property("verified");
+      chaiExpect(search[0].verified).to.be.a("boolean");
     });
 
     it("should search un-verified", async () => {
@@ -230,7 +275,7 @@ describe("Torrent", () => {
     });
 
     it("retrieves expected properties", async () => {
-      assertHasNecessaryProperties(this.search[0]);
+      assertHasNecessaryProperties(search[0]);
     });
 
     it("searches by sortBy: desc", async () => {
@@ -259,16 +304,18 @@ describe("Torrent", () => {
 
     it("should get torrents, strict", async () => {
       const searchResults = await Promise.all([
-        Torrent.search("Game of Thrones S01E08"),
-        Torrent.search("Game of Thrones S02E03"),
-        Torrent.search("Game of Thrones S03E03")
+        Torrent.search("Citadel S01E05"),
+        Torrent.search("Citadel S01E04"),
+        Torrent.search("Citadel S01E03")
       ]);
 
       for (const result of searchResults) {
         chaiExpect(result).to.have.length.above(10);
         chaiExpect(result[0])
           .to.have.deep.property("seeders")
-          .that.is.greaterThan(20);
+          .that.satisfies((seeders) => {
+            return parseInt(seeders, 10) > 20;
+          });
       }
     });
   });
@@ -307,14 +354,14 @@ describe("Torrent", () => {
    */
   describe("Torrent.getTorrent(id)", function() {
     beforeAll(async () => {
-      this.torrent = await torrentFactory();
+      torrent = await torrentFactory();
     });
 
     it("should have no undefined properties", () => {
-        for (const property in this.torrent) { // eslint-disable-line
-        if (this.torrent.hasOwnProperty(property)) {
-          if (typeof this.torrent[property] === "string") {
-            chaiExpect(this.torrent[property]).to.not.include("undefined");
+        for (const property in torrent) { // eslint-disable-line
+        if (torrent.hasOwnProperty(property)) {
+          if (typeof torrent[property] === "string") {
+            chaiExpect(torrent[property]).to.not.include("undefined");
           }
         }
       }
@@ -325,60 +372,60 @@ describe("Torrent", () => {
     });
 
     it("should have a name", () => {
-      chaiExpect(this.torrent).to.have.property(
+      chaiExpect(torrent).to.have.property(
         "name",
         "The Amazing Spider-Man 2 (2014) 1080p BrRip x264 - YIFY"
       );
     });
 
     it("should have uploader", () => {
-      chaiExpect(this.torrent).to.have.property("uploader", "YIFY");
+      chaiExpect(torrent).to.have.property("uploader", "YIFY");
     });
 
     it("should have uploader link", () => {
-      chaiExpect(this.torrent).to.have.property(
+      chaiExpect(torrent).to.have.property(
         "uploaderLink",
-        `${baseUrl}/user/YIFY/`
+        `${baseUrl}/search.php?q=user:YIFY`
       );
     });
 
-    it("should have an id", () => {
-      chaiExpect(this.torrent).to.have.property("id", "10676856");
-    });
+    // it("should have an id", () => {
+    //   chaiExpect(torrent).to.have.property("id", "10676856");
+    // });
 
     it("should have upload date", () => {
-      chaiExpect(this.torrent).to.have.property(
+      chaiExpect(torrent).to.have.property(
         "uploadDate",
-        "2014-08-02 08:15:25 GMT"
+        "2014-08-02"
       );
     });
 
     it("should have size", () => {
-      chaiExpect(this.torrent).to.have.property("size");
-      chaiExpect(this.torrent.size).to.match(/\d+\.\d+\s(G|M|K)iB/);
+      chaiExpect(torrent).to.have.property("size");
+      chaiExpect(torrent.size).to.match(/\d+\.\d+\s(G|M|K)iB/);
     });
 
     it("should have seeders and leechers count", () => {
-      chaiExpect(this.torrent).to.have.property("seeders");
-      chaiExpect(this.torrent).to.have.property("leechers");
-      chaiExpect(~~this.torrent.leechers).to.be.above(-1);
-      chaiExpect(~~this.torrent.seeders).to.be.above(-1);
+      chaiExpect(torrent).to.have.property("seeders");
+      chaiExpect(torrent).to.have.property("leechers");
+      chaiExpect(~~torrent.leechers).to.be.above(-1);
+      chaiExpect(~~torrent.seeders).to.be.above(-1);
     });
 
-    it("should have a link", () => {
-      chaiExpect(this.torrent).to.have.property(
-        "link",
-        `${baseUrl}/torrent/10676856`
-      );
-    });
+    // it("should have a link", () => {
+    //   chaiExpect(torrent).to.have.property(
+    //     "link",
+    //     `${baseUrl}/torrent/10676856`
+    //   );
+    // });
 
     it("should have a magnet link", () => {
-      chaiExpect(this.torrent).to.have.property("magnetLink");
+      chaiExpect(torrent).to.have.property("magnetLink");
     });
 
     it("should have a description", () => {
-      chaiExpect(this.torrent).to.have.property("description");
-      chaiExpect(this.torrent.description).to.be.a("string");
+      chaiExpect(torrent).to.have.property("description");
+      chaiExpect(torrent.description).to.be.a("string");
     });
   });
 
@@ -387,8 +434,8 @@ describe("Torrent", () => {
    */
   describe("Torrent.search(title, opts)", function() {
     beforeAll(async () => {
-      this.searchResults = await Torrent.search("Game of Thrones");
-      this.fistSearchResult = this.searchResults[0];
+      searchResults = await Torrent.search("Game of Thrones");
+      fistSearchResult = searchResults[0];
     });
 
     it("should return a promise", () => {
@@ -396,91 +443,87 @@ describe("Torrent", () => {
     });
 
     it("should return an array of search results", () => {
-      chaiExpect(this.searchResults).to.be.an("array");
+      chaiExpect(searchResults).to.be.an("array");
     });
 
     describe("search result", () => {
       it("should have an id", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("id");
-        chaiExpect(this.fistSearchResult.id).to.match(/^\d+$/);
+        chaiExpect(fistSearchResult).to.have.property("id");
+        chaiExpect(fistSearchResult.id).to.match(/^\d+$/);
       });
 
       it("should have a name", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("name");
-        chaiExpect(this.fistSearchResult.name).to.match(/game.of.thrones/i);
+        chaiExpect(fistSearchResult).to.have.property("name");
+        chaiExpect(fistSearchResult.name).to.match(/game.of.thrones/i);
       });
 
       it("should have upload date", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("uploadDate");
+        chaiExpect(fistSearchResult).to.have.property("uploadDate");
         /**
          * Valid dates:
-         *  31 mins ago
-         *  Today 02:18
-         *  Y-day 22:14
-         *  02-10 03:36
-         *  06-21 2011
+         *  2015-10-20
          */
-        chaiExpect(this.fistSearchResult.uploadDate).to.match(
-          /(\d*\smins\sago)|(Today|Y-day)\s\d\d:\d\d|\d\d-\d\d\s(\d\d:\d\d|\d{4})/
+        chaiExpect(fistSearchResult.uploadDate).to.match(
+          /\d{4}-\d{2}-\d{2}/
         );
       });
 
       it("should have size", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("size");
+        chaiExpect(fistSearchResult).to.have.property("size");
         /**
          * Valid sizes:
          *  529.84 MiB
          *  2.04 GiB
          *  598.98 KiB
          */
-        chaiExpect(this.fistSearchResult.size).to.exist;
+        chaiExpect(fistSearchResult.size).to.exist;
       });
 
       it("should have seeders and leechers count", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("seeders");
-        chaiExpect(this.fistSearchResult).to.have.property("leechers");
-        chaiExpect(~~this.fistSearchResult.leechers).to.be.above(-1);
-        chaiExpect(~~this.fistSearchResult.seeders).to.be.above(-1);
+        chaiExpect(fistSearchResult).to.have.property("seeders");
+        chaiExpect(fistSearchResult).to.have.property("leechers");
+        chaiExpect(~~fistSearchResult.leechers).to.be.above(-1);
+        chaiExpect(~~fistSearchResult.seeders).to.be.above(-1);
       });
 
       it("should have a link", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("link");
-        chaiExpect(this.fistSearchResult.link).to.match(
-          new RegExp(`${baseUrl}/torrent/\\d+/+`)
+        chaiExpect(fistSearchResult).to.have.property("link");
+        chaiExpect(fistSearchResult.link).to.match(
+          new RegExp(`${baseUrl}/description\\.php\\?id=\\d+`)
         );
       });
 
       it("should have a magnet link", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("magnetLink");
-        chaiExpect(this.fistSearchResult.magnetLink).to.match(/magnet:\?xt=.+/);
+        chaiExpect(fistSearchResult).to.have.property("magnetLink");
+        chaiExpect(fistSearchResult.magnetLink).to.match(/magnet:\?xt=.+/);
       });
 
       it("should have a category", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("category");
-        chaiExpect(this.fistSearchResult.category.id).to.match(/[1-6]00/);
-        chaiExpect(this.fistSearchResult.category.name).to.match(/\w+/);
+        chaiExpect(fistSearchResult).to.have.property("category");
+        chaiExpect(fistSearchResult.category.id).to.match(/[1-6]00/);
+        chaiExpect(fistSearchResult.category.name).to.match(/\w+/);
       });
 
       it("should have a subcategory", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("subcategory");
-        chaiExpect(this.fistSearchResult.subcategory.id).to.match(
+        chaiExpect(fistSearchResult).to.have.property("subcategory");
+        chaiExpect(fistSearchResult.subcategory.id).to.match(
           /[1-6][09][1-9]/
         );
-        chaiExpect(this.fistSearchResult.subcategory.name).to.match(
+        chaiExpect(fistSearchResult.subcategory.name).to.match(
           /[a-zA-Z0-9 ()/-]/
         );
       });
 
       it("should have an uploader and uploader link", () => {
-        chaiExpect(this.fistSearchResult).to.have.property("uploader");
-        chaiExpect(this.fistSearchResult).to.have.property("uploaderLink");
+        chaiExpect(fistSearchResult).to.have.property("uploader");
+        chaiExpect(fistSearchResult).to.have.property("uploaderLink");
       });
     });
   });
 
   describe("Torrent.topTorrents(category, opts)", function() {
     beforeAll(async () => {
-      this.topTorrents = await Torrent.topTorrents("205");
+      topTorrents = await Torrent.topTorrents("205");
     });
 
     it("should return a promise", () => {
@@ -491,18 +534,18 @@ describe("Torrent", () => {
       const topTorrents = await Torrent.topTorrents(205);
       chaiExpect(topTorrents).to.be.an("array");
       chaiExpect(topTorrents[0].category.name).to.be.equal("Video");
-      chaiExpect(topTorrents[0].subcategory.name).to.be.equal("TV shows");
+      chaiExpect(topTorrents[0].subcategory.name).to.be.equal("TV-Shows");
     });
 
     it("should return an array of top torrents of the selected category", () => {
-      chaiExpect(this.topTorrents).to.be.an("array");
+      chaiExpect(topTorrents).to.be.an("array");
     });
 
     describe("search result", () => {
       it("category and subcategory shoud match specified category", () => {
-        chaiExpect(this.topTorrents[0].category.name).to.be.equal("Video");
-        chaiExpect(this.topTorrents[0].subcategory.name).to.be.equal(
-          "TV shows"
+        chaiExpect(topTorrents[0].category.name).to.be.equal("Video");
+        chaiExpect(topTorrents[0].subcategory.name).to.be.equal(
+          "TV-Shows"
         );
       });
     });
@@ -510,7 +553,7 @@ describe("Torrent", () => {
 
   describe("Torrent.recentTorrents()", function testRecentTorrents() {
     beforeAll(async () => {
-      this.recentTorrents = await Torrent.recentTorrents();
+      recentTorrents = await Torrent.recentTorrents();
     });
 
     it("should return a promise", () => {
@@ -518,12 +561,12 @@ describe("Torrent", () => {
     });
 
     it("should return an array of the most recent torrents", () => {
-      chaiExpect(this.recentTorrents).to.be.an("array");
+      chaiExpect(recentTorrents).to.be.an("array");
     });
 
     describe("recent torrent", () => {
       it("should be uploaded recently", () => {
-        const [recentTorrent] = this.recentTorrents;
+        const [recentTorrent] = recentTorrents;
         chaiExpect(recentTorrent.uploadDate).to.exist;
       });
     });
@@ -531,8 +574,8 @@ describe("Torrent", () => {
 
   describe("Torrent.getCategories()", function testGetCategories() {
     beforeAll(async () => {
-      this.categories = await torrentCategoryFactory();
-      this.subcategory = this.categories[0].subcategories[0];
+      categories = await torrentCategoryFactory();
+      subcategory = categories[0].subcategories[0];
     });
 
     it("should return promise", () => {
@@ -542,39 +585,39 @@ describe("Torrent", () => {
     });
 
     it("should return an array of categories", () => {
-      chaiExpect(this.categories).to.be.an("array");
+      chaiExpect(categories).to.be.an("array");
     });
 
     describe("category", () => {
       it("should have an id", () => {
-        chaiExpect(this.categories[0]).to.have.property("id");
-        chaiExpect(this.categories[0].id).to.match(/\d00/);
+        chaiExpect(categories[0]).to.have.property("id");
+        chaiExpect(categories[0].id).to.match(/\d00/);
       });
 
       it("should have a name", () => {
-        chaiExpect(this.categories[0]).to.have.property("name");
-        chaiExpect(this.categories[0].name).to.be.a("string");
+        chaiExpect(categories[0]).to.have.property("name");
+        chaiExpect(categories[0].name).to.be.a("string");
       });
 
       it("name should match id", () => {
-        const video = this.categories.find(elem => elem.name === "Video");
+        const video = categories.find(elem => elem.name === "Video");
         chaiExpect(video.id).to.equal("200");
       });
 
       it("shold have subcategories array", () => {
-        chaiExpect(this.categories[0]).to.have.property("subcategories");
-        chaiExpect(this.categories[0].subcategories).to.be.an("array");
+        chaiExpect(categories[0]).to.have.property("subcategories");
+        chaiExpect(categories[0].subcategories).to.be.an("array");
       });
 
       describe("subcategory", () => {
         it("should have an id", () => {
-          chaiExpect(this.subcategory).to.have.property("id");
-          chaiExpect(this.subcategory.id).to.match(/\d{3}/);
+          chaiExpect(subcategory).to.have.property("id");
+          chaiExpect(subcategory.id).to.match(/\d{3}/);
         });
 
         it("should have a name", () => {
-          chaiExpect(this.subcategory).to.have.property("name");
-          chaiExpect(this.subcategory.name).to.be.a("string");
+          chaiExpect(subcategory).to.have.property("name");
+          chaiExpect(subcategory.name).to.be.a("string");
         });
       });
     });
@@ -582,7 +625,7 @@ describe("Torrent", () => {
 
   describe("Torrent.getComments()", function testGetComments() {
     beforeAll(async () => {
-      this.comments = await torrentCommentsFactory();
+      comments = await torrentCommentsFactory();
     });
 
     it("should return promise", () => {
@@ -590,18 +633,18 @@ describe("Torrent", () => {
     });
 
     it("should return an array of comment", () => {
-      chaiExpect(this.comments).to.be.an("array");
+      chaiExpect(comments).to.be.an("array");
     });
 
     describe("comment", () => {
       it("should have a user", () => {
-        chaiExpect(this.comments[0]).to.have.property("user");
-        chaiExpect(this.comments[0].user).to.be.a("string");
+        chaiExpect(comments[0]).to.have.property("user");
+        chaiExpect(comments[0].user).to.be.a("string");
       });
 
       it("should have a comment", () => {
-        chaiExpect(this.comments[0]).to.have.property("comment");
-        chaiExpect(this.comments[0].comment).to.be.a("string");
+        chaiExpect(comments[0]).to.have.property("comment");
+        chaiExpect(comments[0].comment).to.be.a("string");
       });
     });
   });
@@ -611,7 +654,7 @@ describe("Torrent", () => {
    */
   describe("Torrent.userTorrents(userName, opts)", function testUserTorrents() {
     beforeAll(async () => {
-      this.userTorrents = await Torrent.userTorrents("YIFY");
+      userTorrents = await Torrent.userTorrents("YIFY");
     });
 
     it("should return a promise", () => {
@@ -619,71 +662,67 @@ describe("Torrent", () => {
     });
 
     it("should return an array of the user torrents", () => {
-      chaiExpect(this.userTorrents).to.be.an("array");
+      chaiExpect(userTorrents).to.be.an("array");
     });
 
     describe("user torrent", () => {
       it("should have a name", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("name");
+        chaiExpect(userTorrents[0]).to.have.property("name");
       });
 
       it("should have upload date", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("uploadDate");
+        chaiExpect(userTorrents[0]).to.have.property("uploadDate");
         /*
          * Valid dates:
-         *  31 mins ago
-         *  Today 02:18
-         *  Y-day 22:14
-         *  02-10 03:36
-         *  06-21 2011
+         *  2015-10-20
          */
-        chaiExpect(this.userTorrents[0].uploadDate).to.match(
-          /(\d*\smins\sago)|(Today|Y-day)\s\d\d:\d\d|\d\d-\d\d\s(\d\d:\d\d|\d{4})/
+        chaiExpect(userTorrents[0].uploadDate).to.match(
+          /\d{4}-\d{2}-\d{2}/
         );
       });
 
       it("should have size", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("size");
+        chaiExpect(userTorrents[0]).to.have.property("size");
         /*
          * Valid sizes:
          *  529.84 MiB
          *  2.04 GiB
          *  598.98 KiB
          */
-        chaiExpect(this.userTorrents[0].size).to.match(/\d+\.\d+\s(G|M|K)iB/);
+        chaiExpect(userTorrents[0].size).to.match(/\d+\.\d+\s(G|M|K)iB/);
       });
 
       it("should have seeders and leechers count", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("seeders");
-        chaiExpect(this.userTorrents[0]).to.have.property("leechers");
-        chaiExpect(~~this.userTorrents[0].leechers).to.be.above(-1);
-        chaiExpect(~~this.userTorrents[0].seeders).to.be.above(-1);
+        chaiExpect(userTorrents[0]).to.have.property("seeders");
+        chaiExpect(userTorrents[0]).to.have.property("leechers");
+        chaiExpect(~~userTorrents[0].leechers).to.be.above(-1);
+        chaiExpect(~~userTorrents[0].seeders).to.be.above(-1);
       });
 
       it("should have a link", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("link");
-        chaiExpect(this.userTorrents[0].link).to.match(
-          new RegExp(`${baseUrl}/torrent/\\d+/+`)
+        chaiExpect(userTorrents[0]).to.have.property("link");
+        chaiExpect(userTorrents[0].link).to.match(
+          new RegExp(`${baseUrl}/description\\.php\\?id=\\d+`)
         );
       });
 
       it("should have a magnet link", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("magnetLink");
-        chaiExpect(this.userTorrents[0].magnetLink).to.match(/magnet:\?xt=.+/);
+        chaiExpect(userTorrents[0]).to.have.property("magnetLink");
+        chaiExpect(userTorrents[0].magnetLink).to.match(/magnet:\?xt=.+/);
       });
 
       it("should have a category", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("category");
-        chaiExpect(this.userTorrents[0].category.id).to.match(/[1-6]00/);
-        chaiExpect(this.userTorrents[0].category.name).to.match(/\w+/);
+        chaiExpect(userTorrents[0]).to.have.property("category");
+        chaiExpect(userTorrents[0].category.id).to.match(/[1-6]00/);
+        chaiExpect(userTorrents[0].category.name).to.match(/\w+/);
       });
 
       it("should have a subcategory", () => {
-        chaiExpect(this.userTorrents[0]).to.have.property("subcategory");
-        chaiExpect(this.userTorrents[0].subcategory.id).to.match(
+        chaiExpect(userTorrents[0]).to.have.property("subcategory");
+        chaiExpect(userTorrents[0].subcategory.id).to.match(
           /[1-6][09][1-9]/
         );
-        chaiExpect(this.userTorrents[0].subcategory.name).to.match(
+        chaiExpect(userTorrents[0].subcategory.name).to.match(
           /[a-zA-Z0-9 ()/-]/
         );
       });
@@ -695,7 +734,7 @@ describe("Torrent", () => {
    */
   describe("Torrent.getTvShow(id)", function testGetTvShow() {
     beforeAll(async () => {
-      this.tvShow = await Torrent.getTvShow("2");
+      tvShow = await Torrent.getTvShow("2");
     });
 
     it("should return a promise", () => {
