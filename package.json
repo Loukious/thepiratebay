@@ -1,9 +1,9 @@
 {
-  "name": "thepiratebay",
+  "name": "thepiratebayfixed",
   "version": "1.5.0",
   "description": "The pirate bay client",
-  "homepage": "http://github.com/t3chnoboy/thepiratebay",
-  "repository": "git://github.com/t3chnoboy/thepiratebay.git",
+  "homepage": "https://github.com/Loukious/thepiratebay",
+  "repository": "https://github.com/Loukious/thepiratebay.git",
   "author": "Dmitry Mazuro <dmitry.mazuro@icloud.com>",
   "main": "./lib/index.js",
   "license": "MIT",
